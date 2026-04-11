@@ -1,0 +1,12 @@
+com\pawpal\provider\model\ProviderVet.class
+com\pawpal\provider\client\AuthClient.class
+com\pawpal\provider\repository\ProviderRepository.class
+com\pawpal\provider\ProviderApplication.class
+com\pawpal\provider\model\Booking.class
+com\pawpal\provider\repository\BookingRepository.class
+com\pawpal\provider\rest\ProviderController.class
+com\pawpal\provider\repository\VeterinarianRepository.class
+com\pawpal\provider\repository\ProviderVetRepository.class
+com\pawpal\provider\model\Provider.class
+com\pawpal\provider\model\Veterinarian.class
+com\pawpal\provider\service\ProviderService.class

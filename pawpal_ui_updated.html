@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PawPal</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f6f7fb;
+      color: #222;
+    }
+    .wrap {
+      max-width: 1050px;
+      margin: 0 auto;
+      padding: 24px 16px 40px;
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+    }
+    .sub {
+      margin: 0 0 20px;
+      color: #555;
+      font-size: 14px;
+    }
+    .note {
+      background: #fff7df;
+      border: 1px solid #f0d98c;
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin-bottom: 18px;
+      font-size: 14px;
+      line-height: 1.45;
+    }
+    .card {
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .card h2 {
+      margin: 0 0 12px;
+      font-size: 18px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .row {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      align-items: start;
+    }
+    .full { grid-column: 1 / -1; }
+    .thirds {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+      align-items: start;
+    }
+    label {
+      display: block;
+      font-size: 12px;
+      color: #555;
+      margin: 0 0 4px;
+      font-weight: bold;
+    }
+    input, select, textarea, button {
+      width: 100%;
+      font: inherit;
+    }
+    input, select, textarea {
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      background: #fff;
+    }
+    textarea {
+      min-height: 120px;
+      resize: vertical;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px;
+    }
+    button {
+      border: 0;
+      background: #222;
+      color: white;
+      padding: 11px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    button.alt { background: #666; }
+    button.warn { background: #8a2d2d; }
+    .status {
+      background: #f1f3f9;
+      border-radius: 10px;
+      padding: 12px;
+      font-size: 14px;
+      line-height: 1.5;
+      word-break: break-word;
+    }
+    .tiny { font-size: 12px; color: #666; margin-top: 8px; }
+    @media (max-width: 900px) {
+      .row, .thirds, .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>PawPal</h1>
+
+    <div class="card">
+      <h2>Base URLs</h2>
+      <div class="grid">
+        <div>
+          <label>Mode</label>
+          <select id="mode" onchange="applyMode()">
+            <option value="direct" selected>Direct services</option>
+            <option value="gateway">Gateway</option>
+          </select>
+        </div>
+        <div>
+          <label>Gateway Base URL</label>
+          <input id="gatewayBase" value="http://localhost:8084" />
+        </div>
+        <div>
+          <label>Auth Base URL</label>
+          <input id="authBase" value="http://localhost:8080" />
+        </div>
+        <div>
+          <label>Owner Base URL</label>
+          <input id="ownerBase" value="http://localhost:8081" />
+        </div>
+        <div>
+          <label>Provider Base URL</label>
+          <input id="providerBase" value="http://localhost:8082" />
+        </div>
+        <div>
+          <label>Review Base URL</label>
+          <input id="reviewBase" value="http://localhost:8083" />
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Current session</h2>
+      <div class="status" id="sessionBox">
+        userId: —<br>
+        role: —<br>
+        email: —<br>
+        token: —
+      </div>
+      <div class="grid" style="margin-top:10px;">
+        <div><button class="warn" onclick="logoutUser()">Logout</button></div>
+        <div><button class="alt" onclick="clearAllResponses()">Clear response boxes</button></div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="card">
+        <h2>1) Register user</h2>
+        <div class="grid">
+          <div class="full">
+            <label>Name</label>
+            <input id="regName" placeholder="Full Name" />
+          </div>
+          <div class="full">
+            <label>Email</label>
+            <input id="regEmail" placeholder="user@example.com" />
+          </div>
+          <div>
+            <label>Password</label>
+            <input id="regPassword" type="password" placeholder="password" />
+          </div>
+          <div>
+            <label>Role</label>
+            <select id="regRole">
+              <option value="PET_OWNER">PET_OWNER</option>
+              <option value="PROVIDER">PROVIDER</option>
+            </select>
+          </div>
+          <div class="full">
+            <button onclick="registerUser()">Register</button>
+          </div>
+          <div class="full">
+            <label>Response</label>
+            <textarea id="registerResponse" readonly></textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>2) Login</h2>
+        <div class="grid">
+          <div class="full">
+            <label>Email</label>
+            <input id="loginEmail" placeholder="user@example.com" />
+          </div>
+          <div class="full">
+            <label>Password</label>
+            <input id="loginPassword" type="password" placeholder="password" />
+          </div>
+          <div class="full">
+            <button onclick="loginUser()">Login</button>
+          </div>
+          <div class="full">
+            <label>Response</label>
+            <textarea id="loginResponse" readonly></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="card">
+        <h2>3) Owner profile</h2>
+        <div class="grid">
+          <div>
+            <label>Owner ID</label>
+            <input id="ownerId" placeholder="auto-filled after create/check" />
+          </div>
+          <div>
+            <label>User ID</label>
+            <input id="ownerUserId" placeholder="auth user id" />
+          </div>
+          <div class="full">
+            <label>Name</label>
+            <input id="ownerName" placeholder="Owner name" />
+          </div>
+          <div class="full">
+            <label>Email</label>
+            <input id="ownerEmail" placeholder="Owner email" />
+          </div>
+          <div><button onclick="createOwnerProfile()">Create owner</button></div>
+          <div><button class="alt" onclick="checkOwnerProfile()">Find by userId</button></div>
+          <div class="full"><button class="alt" onclick="updateOwnerProfile()">Update owner</button></div>
+          <div class="full">
+            <label>Response</label>
+            <textarea id="ownerResponse" readonly></textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>4) Provider profile</h2>
+        <div class="grid">
+          <div>
+            <label>Service ID</label>
+            <input id="providerServiceId" placeholder="auto-filled after create/check" />
+          </div>
+          <div>
+            <label>User ID</label>
+            <input id="providerUserId" placeholder="auth user id" />
+          </div>
+          <div class="full">
+            <label>Name</label>
+            <input id="providerName" placeholder="Clinic / provider name" />
+          </div>
+          <div class="full">
+            <label>Address</label>
+            <input id="providerAddress" placeholder="Street, building, area" />
+          </div>
+          <div>
+            <label>Location</label>
+            <input id="providerLocation" placeholder="Dubai" />
+          </div>
+          <div>
+            <label>Operating Hours</label>
+            <input id="providerHours" placeholder="Mon-Fri 9am-6pm" />
+          </div>
+          <div>
+            <label>Services</label>
+            <input id="providerServices" placeholder="grooming, vet, daycare" />
+          </div>
+          <div>
+            <label>Pricing</label>
+            <input id="providerPricing" placeholder="AED 100-500" />
+          </div>
+          <div><button onclick="createProviderProfile()">Create provider</button></div>
+          <div><button class="alt" onclick="checkProviderProfile()">Find by userId</button></div>
+          <div class="full"><button class="alt" onclick="updateProviderProfile()">Update provider</button></div>
+          <div class="full">
+            <label>Response</label>
+            <textarea id="providerResponse" readonly></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>5) Pets</h2>
+      <div class="thirds">
+        <div>
+          <div class="grid">
+            <div>
+              <label>Owner ID</label>
+              <input id="petOwnerId" placeholder="owner id" />
+            </div>
+            <div>
+              <label>Pet ID</label>
+              <input id="petId" placeholder="auto-filled after create/load" />
+            </div>
+            <div class="full">
+              <label>Name</label>
+              <input id="petName" placeholder="Milo" />
+            </div>
+            <div>
+              <label>Type</label>
+              <input id="petType" placeholder="Dog" />
+            </div>
+            <div>
+              <label>Breed</label>
+              <input id="petBreed" placeholder="Shiba Inu" />
+            </div>
+            <div>
+              <label>Age</label>
+              <input id="petAge" type="number" min="0" placeholder="3" />
+            </div>
+            <div>
+              <label>Health</label>
+              <input id="petHealth" placeholder="Healthy" />
+            </div>
+            <div><button onclick="createPet()">Create pet</button></div>
+            <div><button class="alt" onclick="loadPet()">Load pet</button></div>
+            <div class="full"><button class="alt" onclick="updatePet()">Update pet</button></div>
+          </div>
+        </div>
+        <div>
+          <div class="grid">
+            <div class="full"><button class="alt" onclick="listPets()">List all pets for owner</button></div>
+            <div class="full"><button class="alt" onclick="copyOwnerIdToPet()">Use current owner ID</button></div>
+            <div class="full">
+              <label>Pet Response</label>
+              <textarea id="petResponse" readonly></textarea>
+            </div>
+          </div>
+        </div>
+        <div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+    <div class="card">
+      <h2>6) Bookings</h2>
+      <div class="thirds">
+        <div>
+          <div class="grid">
+            <div>
+              <label>Service ID</label>
+              <input id="bookingServiceId" placeholder="provider service id" />
+            </div>
+            <div>
+              <label>Pet Owner ID</label>
+              <input id="bookingPetOwnerId" placeholder="owner id" />
+            </div>
+            <div>
+              <label>Pet ID</label>
+              <input id="bookingPetId" placeholder="pet id" />
+            </div>
+            <div>
+              <label>Service Type</label>
+              <input id="bookingServiceType" placeholder="grooming / vet / daycare" />
+            </div>
+            <div>
+              <label>Date (YYYY-MM-DD)</label>
+              <input id="bookingDate" placeholder="2026-06-01" />
+            </div>
+            <div>
+              <label>Time (HH:MM)</label>
+              <input id="bookingTime" placeholder="10:00" />
+            </div>
+            <div class="full">
+              <label>Notes</label>
+              <input id="bookingNotes" placeholder="Optional notes" />
+            </div>
+            <div class="full">
+              <button onclick="createBooking()">Create Booking</button>
+            </div>
+            <div class="full">
+              <button class="alt" onclick="copyIdsToBooking()">Use current owner + pet + service IDs</button>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="grid">
+            <div class="full">
+              <label>Booking ID</label>
+              <input id="bookingId" placeholder="auto-filled after create" />
+            </div>
+            <div class="full"><button class="alt" onclick="listMyBookings()">My Bookings (by owner)</button></div>
+            <div class="full"><button class="alt" onclick="listServiceBookings()">Service Bookings (by provider)</button></div>
+            <div class="full"><button onclick="confirmBooking()">Confirm Booking</button></div>
+            <div class="full"><button class="warn" onclick="cancelBooking()">Cancel Booking</button></div>
+          </div>
+        </div>
+        <div>
+          <div class="grid">
+            <div class="full">
+              <label>Booking Response</label>
+              <textarea id="bookingResponse" readonly></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>7) Reviews</h2>
+      <div class="thirds">
+        <div>
+          <div class="grid">
+            <div>
+              <label>Target Type</label>
+              <select id="reviewTargetType">
+                <option value="service">Service</option>
+                <option value="veterinarian">Veterinarian</option>
+              </select>
+            </div>
+            <div>
+              <label>Target ID (service or vet)</label>
+              <input id="reviewTargetId" placeholder="service or vet id" />
+            </div>
+            <div>
+              <label>Pet Owner ID</label>
+              <input id="reviewPetOwnerId" placeholder="owner id" />
+            </div>
+            <div>
+              <label>Booking ID</label>
+              <input id="reviewBookingId" placeholder="booking id" />
+            </div>
+            <div>
+              <label>Rating (1-5)</label>
+              <input id="reviewRating" type="number" min="1" max="5" placeholder="5" />
+            </div>
+            <div class="full">
+              <label>Comment</label>
+              <input id="reviewComment" placeholder="Great service!" />
+            </div>
+            <div class="full">
+              <button onclick="submitReview()">Submit Review</button>
+            </div>
+            <div class="full">
+              <button class="alt" onclick="copyIdsToReview()">Use current booking + owner + service IDs</button>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="grid">
+            <div class="full"><button class="alt" onclick="getReviews()">Get Reviews for Target</button></div>
+            <div class="full">
+              <label>Review Response</label>
+              <textarea id="reviewResponse" readonly></textarea>
+            </div>
+          </div>
+        </div>
+        <div></div>
+      </div>
+    </div>
+
+
+  <script>
+    const state = {
+      userId: '',
+      role: '',
+      email: '',
+      token: ''
+    };
+
+    function $(id) { return document.getElementById(id); }
+
+    function authUrl(path) {
+      return ($('mode').value === 'gateway' ? $('gatewayBase').value : $('authBase').value) + path;
+    }
+
+    function ownerUrl(path) {
+      return ($('mode').value === 'gateway' ? $('gatewayBase').value : $('ownerBase').value) + path;
+    }
+
+    function providerUrl(path) {
+      return ($('mode').value === 'gateway' ? $('gatewayBase').value : $('providerBase').value) + path;
+    }
+
+    function reviewUrl(path) {
+      return ($('mode').value === 'gateway' ? $('gatewayBase').value : $('reviewBase').value) + path;
+    }
+
+    function applyMode() {
+      syncSessionBox();
+      saveSession();
+    }
+
+    function pretty(x) {
+      if (typeof x === 'string') return x;
+      try { return JSON.stringify(x, null, 2); } catch { return String(x); }
+    }
+
+    function setText(id, value) {
+      $(id).value = value;
+    }
+
+    function saveSession() {
+      const payload = {
+        state,
+        mode: $('mode').value,
+        gatewayBase: $('gatewayBase').value,
+        authBase: $('authBase').value,
+        ownerBase: $('ownerBase').value,
+        providerBase: $('providerBase').value,
+        reviewBase: $('reviewBase').value
+      };
+      localStorage.setItem('pawpalSimpleUiState', JSON.stringify(payload));
+    }
+
+    function loadSession() {
+      try {
+        const raw = localStorage.getItem('pawpalSimpleUiState');
+        if (!raw) return;
+        const saved = JSON.parse(raw);
+        if (saved.mode) $('mode').value = saved.mode;
+        if (saved.gatewayBase) $('gatewayBase').value = saved.gatewayBase;
+        if (saved.authBase) $('authBase').value = saved.authBase;
+        if (saved.ownerBase) $('ownerBase').value = saved.ownerBase;
+        if (saved.providerBase) $('providerBase').value = saved.providerBase;
+        if (saved.reviewBase) $('reviewBase').value = saved.reviewBase;
+        if (saved.state) Object.assign(state, saved.state);
+      } catch {}
+    }
+
+    function syncSessionBox() {
+      $('sessionBox').innerHTML = [
+        'userId: ' + (state.userId || '—'),
+        'role: ' + (state.role || '—'),
+        'email: ' + (state.email || '—'),
+        'token: ' + (state.token || '—')
+      ].join('<br>');
+    }
+
+    function fillFromRegisteredUser(user) {
+      if (!user || typeof user !== 'object') return;
+
+      if (user.id !== undefined && user.id !== null) {
+        const id = String(user.id);
+        state.userId = id;
+        $('ownerUserId').value = id;
+        $('providerUserId').value = id;
+      }
+
+      if (user.role) state.role = user.role;
+
+      if (user.email) {
+        state.email = user.email;
+        $('ownerEmail').value = user.email;
+        $('loginEmail').value = user.email;
+      }
+
+      if (user.name) {
+        $('ownerName').value = user.name;
+        $('providerName').value = user.name;
+      }
+
+      syncSessionBox();
+      saveSession();
+    }
+
+    function fillOwnerForm(owner) {
+      if (!owner || typeof owner !== 'object') return;
+      if (owner.id !== undefined && owner.id !== null) {
+        $('ownerId').value = String(owner.id);
+        $('petOwnerId').value = String(owner.id);
+      }
+      if (owner.userId !== undefined && owner.userId !== null) $('ownerUserId').value = String(owner.userId);
+      if (owner.name) $('ownerName').value = owner.name;
+      if (owner.email) $('ownerEmail').value = owner.email;
+    }
+
+    function fillProviderForm(provider) {
+      if (!provider || typeof provider !== 'object') return;
+      if (provider.id !== undefined && provider.id !== null) $('providerServiceId').value = String(provider.id);
+      if (provider.userId !== undefined && provider.userId !== null) $('providerUserId').value = String(provider.userId);
+      if (provider.name) $('providerName').value = provider.name;
+      if (provider.address) $('providerAddress').value = provider.address;
+      if (provider.location) $('providerLocation').value = provider.location;
+      if (provider.operatingHours) $('providerHours').value = provider.operatingHours;
+      if (provider.services) $('providerServices').value = provider.services;
+      if (provider.pricing) $('providerPricing').value = provider.pricing;
+    }
+
+    function fillPetForm(pet) {
+      if (!pet || typeof pet !== 'object') return;
+      if (pet.id !== undefined && pet.id !== null) $('petId').value = String(pet.id);
+      if (pet.name) $('petName').value = pet.name;
+      if (pet.type) $('petType').value = pet.type;
+      if (pet.breed) $('petBreed').value = pet.breed;
+      if (pet.age !== undefined && pet.age !== null) $('petAge').value = String(pet.age);
+      if (pet.health) $('petHealth').value = pet.health;
+      if (pet.owner && pet.owner.id !== undefined && pet.owner.id !== null) $('petOwnerId').value = String(pet.owner.id);
+    }
+
+    function copyOwnerIdToPet() {
+      if ($('ownerId').value.trim()) $('petOwnerId').value = $('ownerId').value.trim();
+    }
+
+    function logoutUser() {
+      state.userId = '';
+      state.role = '';
+      state.email = '';
+      state.token = '';
+      $('loginPassword').value = '';
+      syncSessionBox();
+      saveSession();
+      $('loginResponse').value = 'Logged out locally.';
+    }
+
+    function clearAllResponses() {
+      ['registerResponse', 'loginResponse', 'ownerResponse', 'providerResponse', 'petResponse', 'bookingResponse', 'reviewResponse'].forEach(id => $(id).value = '');
+    }
+
+    async function request(url, options = {}) {
+      try {
+        const response = await fetch(url, options);
+        const text = await response.text();
+        let data = text;
+        try { data = text ? JSON.parse(text) : ''; } catch {}
+        return { ok: response.ok, status: response.status, data };
+      } catch (error) {
+        return { ok: false, status: 'NETWORK_ERROR', data: String(error) };
+      }
+    }
+
+    async function registerUser() {
+      const body = {
+        name: $('regName').value.trim(),
+        email: $('regEmail').value.trim(),
+        password: $('regPassword').value,
+        role: $('regRole').value
+      };
+
+      const result = await request(authUrl('/auth/users'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+
+      $('registerResponse').value = 'HTTP ' + result.status + '\n\n' + pretty(result.data);
+
+      if (result.ok && result.data && typeof result.data === 'object') {
+        fillFromRegisteredUser(result.data);
+        $('loginEmail').value = body.email;
+        $('loginPassword').value = body.password;
+      }
+    }
+
+    async function loginUser() {
+      const body = {
+        email: $('loginEmail').value.trim(),
+        password: $('loginPassword').value
+      };
+
+      const result = await request(authUrl('/auth/sessions'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+
+      $('loginResponse').value = 'HTTP ' + result.status + '\n\n' + pretty(result.data);
+
+      if (result.ok && result.data && typeof result.data === 'object') {
+        state.token = result.data.token || '';
+        state.userId = String(result.data.userId || '');
+        state.role = result.data.role || '';
+        state.email = body.email;
+        $('ownerUserId').value = state.userId;
+        $('providerUserId').value = state.userId;
+        syncSessionBox();
+        saveSession();
+      }
+    }
+
+    async function createOwnerProfile() {
+      const body = {
+        name: $('ownerName').value.trim(),
+        email: $('ownerEmail').value.trim(),
+        userId: Number($('ownerUserId').value)
+      };
+
+      const result = await request(ownerUrl('/owners'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+
+      $('ownerResponse').value = 'HTTP ' + result.status + '\n\n' + pretty(result.data);
+      if (result.ok && result.data && typeof result.data === 'object') fillOwnerForm(result.data);
+    }
+
+    async function checkOwnerProfile() {
+      const userId = $('ownerUserId').value.trim();
+      const result = await request(ownerUrl('/owners/by-user/' + encodeURIComponent(userId)));
+      $('ownerResponse').value = 'HTTP ' + result.status + '\n\n' + pretty(result.data);
+      if (result.ok && result.data && typeof result.data === 'object') fillOwnerForm(result.data);
+    }
+
+    async function updateOwnerProfile() {
+      const ownerId = $('ownerId').value.trim();
+      const body = {
+        name: $('ownerName').value.trim(),
+        email: $('ownerEmail').value.trim(),
+        userId: Number($('ownerUserId').value)
+      };
+
+      const result = await request(ownerUrl('/owners/' + encodeURIComponent(ownerId)), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+
+      $('ownerResponse').value = 'HTTP ' + result.status + '\n\n' + pretty(result.data);
+      if (result.ok && result.data && typeof result.data === 'object') fillOwnerForm(result.data);
+    }
+
+    async function createProviderProfile() {
+      const token = state.token || '';
+      const body = {
+        userId: $('providerUserId').value.trim(),
+        name: $('providerName').value.trim(),
+        address: $('providerAddress').value.trim(),
+        location: $('providerLocation').value.trim(),
+        operatingHours: $('providerHours').value.trim(),
+        services: $('providerServices').value.trim(),
+        pricing: $('providerPricing').value.trim()
+      };
+
+      const result = await request(providerUrl('/services'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token
+        },
+        body: JSON.stringify(body)
+      });
+
+      $('providerResponse').value = 'HTTP ' + result.status + '\n\n' + pretty(result.data);
+      if (result.ok && result.data && typeof result.data === 'object') fillProviderForm(result.data);
+    }
+
+    async function checkProviderProfile() {
+      const wantedUserId = $('providerUserId').value.trim();
+      const result = await request(providerUrl('/services'));
+
+      if (!result.ok) {
+        $('providerResponse').value = 'HTTP ' + result.status + '\n\n' + pretty(result.data);
+        return;
+      }
+
+      const list = Array.isArray(result.data) ? result.data : [];
+      const match = list.find(item => String(item.userId) === String(wantedUserId));
+      $('providerResponse').value = 'HTTP ' + result.status + '\n\n' + pretty(match || { message: 'No provider profile found for this userId', allServices: list });
+      if (match) fillProviderForm(match);
+    }
+
+    async function updateProviderProfile() {
+      const token = state.token || '';
+      const serviceId = $('providerServiceId').value.trim();
+      const body = {
+        userId: $('providerUserId').value.trim(),
+        name: $('providerName').value.trim(),
+        address: $('providerAddress').value.trim(),
+        location: $('providerLocation').value.trim(),
+        operatingHours: $('providerHours').value.trim(),
+        services: $('providerServices').value.trim(),
+        pricing: $('providerPricing').value.trim()
+      };
+
+      const result = await request(providerUrl('/services/' + encodeURIComponent(serviceId)), {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token
+        },
+        body: JSON.stringify(body)
+      });
+
+      $('providerResponse').value = 'HTTP ' + result.status + '\n\n' + pretty(result.data);
+      if (result.ok && result.data && typeof result.data === 'object') fillProviderForm(result.data);
+    }
+
+    async function createPet() {
+      const ownerId = $('petOwnerId').value.trim();
+      const body = {
+        name: $('petName').value.trim(),
+        type: $('petType').value.trim(),
+        breed: $('petBreed').value.trim(),
+        age: Number($('petAge').value || 0),
+        health: $('petHealth').value.trim()
+      };
+
+      const result = await request(ownerUrl('/owners/' + encodeURIComponent(ownerId) + '/pets'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+
+      $('petResponse').value = 'HTTP ' + result.status + '\n\n' + pretty(result.data);
+      if (result.ok && result.data && typeof result.data === 'object') fillPetForm(result.data);
+    }
+
+    async function loadPet() {
+      const ownerId = $('petOwnerId').value.trim();
+      const petId = $('petId').value.trim();
+      const result = await request(ownerUrl('/owners/' + encodeURIComponent(ownerId) + '/pets/' + encodeURIComponent(petId)));
+      $('petResponse').value = 'HTTP ' + result.status + '\n\n' + pretty(result.data);
+      if (result.ok && result.data && typeof result.data === 'object') fillPetForm(result.data);
+    }
+
+    async function updatePet() {
+      const ownerId = $('petOwnerId').value.trim();
+      const petId = $('petId').value.trim();
+      const body = {
+        name: $('petName').value.trim(),
+        type: $('petType').value.trim(),
+        breed: $('petBreed').value.trim(),
+        age: Number($('petAge').value || 0),
+        health: $('petHealth').value.trim()
+      };
+
+      const result = await request(ownerUrl('/owners/' + encodeURIComponent(ownerId) + '/pets/' + encodeURIComponent(petId)), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+
+      $('petResponse').value = 'HTTP ' + result.status + '\n\n' + pretty(result.data);
+      if (result.ok && result.data && typeof result.data === 'object') fillPetForm(result.data);
+    }
+
+    async function listPets() {
+      const ownerId = $('petOwnerId').value.trim();
+      const result = await request(ownerUrl('/owners/' + encodeURIComponent(ownerId) + '/pets'));
+      $('petResponse').value = 'HTTP ' + result.status + '\n\n' + pretty(result.data);
+      const list = Array.isArray(result.data) ? result.data : [];
+      if (list.length > 0) fillPetForm(list[0]);
+    }
+
+
+    // -----------------------------------------------------------------------
+    // Booking helpers
+    // -----------------------------------------------------------------------
+
+    function copyIdsToBooking() {
+      if ($('ownerId').value.trim())           $('bookingPetOwnerId').value = $('ownerId').value.trim();
+      if ($('petId').value.trim())             $('bookingPetId').value = $('petId').value.trim();
+      if ($('providerServiceId').value.trim()) $('bookingServiceId').value = $('providerServiceId').value.trim();
+    }
+
+    function fillBookingForm(booking) {
+      if (!booking || typeof booking !== 'object') return;
+      if (booking.id !== undefined && booking.id !== null) {
+        $('bookingId').value = String(booking.id);
+        $('reviewBookingId').value = String(booking.id);
+      }
+    }
+
+    async function createBooking() {
+      const token = state.token || '';
+      const serviceId = $('bookingServiceId').value.trim();
+      const body = {
+        petOwnerId:  $('bookingPetOwnerId').value.trim(),
+        petId:       $('bookingPetId').value.trim(),
+        date:        $('bookingDate').value.trim(),
+        time:        $('bookingTime').value.trim(),
+        serviceType: $('bookingServiceType').value.trim(),
+        notes:       $('bookingNotes').value.trim()
+      };
+
+      const result = await request(providerUrl('/services/' + encodeURIComponent(serviceId) + '/bookings'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: JSON.stringify(body)
+      });
+
+      $('bookingResponse').value = 'HTTP ' + result.status + '\n\n' + pretty(result.data);
+      if (result.ok && result.data && typeof result.data === 'object') fillBookingForm(result.data);
+    }
+
+    async function listMyBookings() {
+      const token = state.token || '';
+      const petOwnerId = $('bookingPetOwnerId').value.trim();
+
+      const result = await request(providerUrl('/bookings?petOwnerId=' + encodeURIComponent(petOwnerId)), {
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+
+      $('bookingResponse').value = 'HTTP ' + result.status + '\n\n' + pretty(result.data);
+      const list = Array.isArray(result.data) ? result.data : [];
+      if (list.length > 0) fillBookingForm(list[0]);
+    }
+
+    async function listServiceBookings() {
+      const token = state.token || '';
+      const serviceId = $('bookingServiceId').value.trim();
+
+      const result = await request(providerUrl('/services/' + encodeURIComponent(serviceId) + '/bookings'), {
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+
+      $('bookingResponse').value = 'HTTP ' + result.status + '\n\n' + pretty(result.data);
+    }
+
+    async function confirmBooking() {
+      const token = state.token || '';
+      const serviceId = $('bookingServiceId').value.trim();
+      const bookingId = $('bookingId').value.trim();
+
+      const result = await request(
+        providerUrl('/services/' + encodeURIComponent(serviceId) + '/bookings/' + encodeURIComponent(bookingId) + '/confirm'),
+        { method: 'PATCH', headers: { 'Authorization': 'Bearer ' + token } }
+      );
+
+      $('bookingResponse').value = 'HTTP ' + result.status + '\n\n' + pretty(result.data);
+      if (result.ok && result.data && typeof result.data === 'object') fillBookingForm(result.data);
+    }
+
+    async function cancelBooking() {
+      const token = state.token || '';
+      const serviceId = $('bookingServiceId').value.trim();
+      const bookingId = $('bookingId').value.trim();
+
+      const result = await request(
+        providerUrl('/services/' + encodeURIComponent(serviceId) + '/bookings/' + encodeURIComponent(bookingId) + '/cancel'),
+        { method: 'PATCH', headers: { 'Authorization': 'Bearer ' + token } }
+      );
+
+      $('bookingResponse').value = 'HTTP ' + result.status + '\n\n' + pretty(result.data);
+      if (result.ok && result.data && typeof result.data === 'object') fillBookingForm(result.data);
+    }
+
+    // -----------------------------------------------------------------------
+    // Review helpers
+    // -----------------------------------------------------------------------
+
+    function copyIdsToReview() {
+      if ($('bookingId').value.trim())         $('reviewBookingId').value = $('bookingId').value.trim();
+      if ($('bookingPetOwnerId').value.trim()) $('reviewPetOwnerId').value = $('bookingPetOwnerId').value.trim();
+      if ($('bookingServiceId').value.trim())  $('reviewTargetId').value = $('bookingServiceId').value.trim();
+    }
+
+    async function submitReview() {
+      const token = state.token || '';
+      const targetType = $('reviewTargetType').value;
+      const targetId   = $('reviewTargetId').value.trim();
+      const body = {
+        petOwnerId: $('reviewPetOwnerId').value.trim(),
+        bookingId:  $('reviewBookingId').value.trim(),
+        rating:     $('reviewRating').value.trim(),
+        comment:    $('reviewComment').value.trim()
+      };
+
+      const path = targetType === 'service'
+        ? '/reviews/services/' + encodeURIComponent(targetId)
+        : '/reviews/veterinarians/' + encodeURIComponent(targetId);
+
+      const result = await request(reviewUrl(path), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: JSON.stringify(body)
+      });
+
+      $('reviewResponse').value = 'HTTP ' + result.status + '\n\n' + pretty(result.data);
+    }
+
+    async function getReviews() {
+      const targetType = $('reviewTargetType').value;
+      const targetId   = $('reviewTargetId').value.trim();
+
+      const path = targetType === 'service'
+        ? '/reviews/services/' + encodeURIComponent(targetId)
+        : '/reviews/veterinarians/' + encodeURIComponent(targetId);
+
+      const result = await request(reviewUrl(path));
+      $('reviewResponse').value = 'HTTP ' + result.status + '\n\n' + pretty(result.data);
+    }
+
+    loadSession();
+    applyMode();
+    syncSessionBox();
+  </script>
+</body>
+</html>
